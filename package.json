@@ -1,0 +1,14 @@
+{
+  "name": "rate_limits",
+  "version": "1.0.0",
+  "description": "Example of API rate limits management for Amadeus Self-Service APIs using the Amadeus node SDK",
+  "main": "rate_limits.ts",
+  "author": "Gustavo GIUNCO BERTOLDI",
+  "license": "MIT",
+  "dependencies": {
+    "amadeus": "^7.0.0",
+    "bottleneck": "^2.19.5",
+    "date-fns": "^2.29.1",
+    "dotenv": "^16.0.1"
+  }
+}
