@@ -12,10 +12,9 @@ const amadeus = new Amadeus({
 
 //Config for test environment
 //Rate limits in test environment are 1 request each 100ms and 10 requests per second
+//Check the README for configuration information
 const limiter = new Bottleneck({
-  reservoir: 5,
-  reservoirRefreshAmount: 5,
-  reservoirRefreshInterval: 1000
+  minTime: 100
 });
 
 //Send 50 requests at once using bottleneck
