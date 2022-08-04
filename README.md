@@ -75,3 +75,12 @@ limiter.schedule(() => {
 });
 ```
 Using this strategy you don't have to worry if your client surpasses the API's rate limits, as requests are just going to be queued up and executed accordingly to these limits. To take a look at a full implementation you can refer to the GitHub repository of the above mentioned prototype [here](https://github.com/gustavo-bertoldi/FlightSearchCalendar).
+
+## Start with the example
+
+In the repository you can find a simple example in the file `rate_limits.js`, where the rate limits of Amadeus APIs are managed using `bottleneck` and 50 simultaneously requests are made to the Amadeus APIs. To play around with this example simply run the commands below, aster setting your amadeus credentials in the environments variables `AMADEUS_CLIENT_ID` and `AMADEUS_CLIENT_SECRET`.
+
+```bash
+npm install
+npm start
+```
