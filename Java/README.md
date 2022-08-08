@@ -5,7 +5,7 @@
 * Maven
 
 ## Getting started
-To implement the rate limits management in a Java environment we are going to user two mechanisms, an `ExecutorService` from the `java.util.concurrent` library, instantiated with a `FixedThreadPool`, which will allow us to send requests through the Amadeus SDK asynchronously. The next tool is from the Google's Guava library, a `RateLimiter` that is going to help us schedule the execution of out calls accordingly to Amadeus' API limits.
+To implement the rate limits management in a Java environment we are going to use two mechanisms, an `ExecutorService` from the `java.util.concurrent` library, instantiated with a `FixedThreadPool`, which will allow us to send requests through the Amadeus SDK asynchronously. The next tool is from the Google's Guava library, a `RateLimiter` that is going to help us schedule the execution of out calls accordingly to Amadeus' API limits.
 
 We are going to setup a `RateLimits` class to help manage the API calls. Two constructors were defined, the first doesn't take any parameters, and the second takes the a `AmadeusEnvironment` enum which designates the environment to use in the Amadeus API, `TEST` or `PRODUCTION`. The rate limiter is instantiated accordingly to the chosen environment.
 
@@ -108,7 +108,7 @@ public static void main(String[] args) {
   }
 ```
 
-The following code is available in `src/main/java/edu/amadeus/sdk/RateLimits.java`. You can run it in your computer with the following commands:
+The following code is available in `src/main/java/edu/amadeus/sdk/RateLimits.java`. You can run it in your computer with the following commands. Don't forget to add your Amadeus credentials to the environment variables `AMADEUS_CLIENT_ID` and `AMADEUS_CLIENT_SECRET`.
 
 ```bash 
 ./mvnw clean verify
