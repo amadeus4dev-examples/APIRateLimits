@@ -32,14 +32,15 @@ now = time.time()
 # defined in the @limits decorator is reached within the period also defined
 # in the @limits decorator
 @sleep_and_retry
-@limits(calls=10, period=1)
+@limits(calls=1, period=0.1)
 def flights_offers_search(call_nb, **args):
   elapsed = time.time() - now
   print(f'Call nb {call_nb} -- Elapsed time: {elapsed}', flush=True)
-  amadeus.shopping.flight_offers_search.get(**args)
+  return amadeus.shopping.flight_offers_search.get(**args)
 
 
 print('Sending requests...')
+results = []
 #All requests are executed simultaneously thanks to max_workers=request_nb
 with concurrent.futures.ThreadPoolExecutor(max_workers=nb_requests) as executor:
   #Create nb_requests futures
@@ -48,7 +49,7 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=nb_requests) as executor:
   #Iterate the completed futures. Futures are yield when completed
   for future in concurrent.futures.as_completed(futures):
     try:
-      response = future.result()
+      results.append(future.result())
       successful += 1
     except ResponseError as error:
       failed += 1
@@ -56,3 +57,6 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=nb_requests) as executor:
       if successful + failed == nb_requests:
         print(f'Requests completed with {successful} successes and {failed} fails')
 
+
+for result in results:
+  print(results[0].data[0]['price']['grandTotal'])
