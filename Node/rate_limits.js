@@ -14,7 +14,10 @@ const amadeus = new Amadeus({
 //Rate limits in test environment are 1 request each 100ms and 10 requests per second
 //Check the README for configuration information
 const limiter = new Bottleneck({
-  minTime: 100
+    reservoir: 10,
+    reservoirRefreshAmount: 10,
+    reservoirRefreshInterval: 1000,
+    minTime: 100
 });
 
 //Send 50 requests at once using bottleneck
@@ -22,9 +25,14 @@ const departureDate = dateFns.format(dateFns.addDays(new Date(), 1), 'yyyy-MM-dd
 const returnDate = dateFns.format(dateFns.addDays(new Date(), 20), 'yyyy-MM-dd');
 let successful = 0;
 let failed = 0;
+let start = Date.now();
 console.log("Sending requests ...");
 for (let i = 0; i < 50; i++) {
-  limiter.schedule(() => 
+  limiter.schedule(() => {
+    
+    let sent = (Date.now() - start) / 1000;
+    console.log(`Request ${i + 1} sent after ${sent}s`)
+    
     amadeus.shopping.flightOffersSearch.get({
       originLocationCode: 'MAD',
       destinationLocationCode: 'LHR',
@@ -32,12 +40,15 @@ for (let i = 0; i < 50; i++) {
       returnDate: returnDate,
       adults: 1,
       travelClass: 'ECONOMY'
-    }))
+    })
     .then(() => successful += 1)
     .catch(() => failed += 1)
     .finally(() => {
-      if (successful + failed === 50) 
+      if (successful + failed === 50)
         console.log(`${successful} successful requests and ${failed} fails`)
-    })
+    });
+  })
 }
+
+
 

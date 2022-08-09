@@ -70,7 +70,7 @@ public class RateLimits {
           results.add(response);
           this.successful += 1;
         } catch (Exception e) {
-          System.err.println(e.getMessage());
+          //System.err.println(e.getMessage());
           this.failed += 1;
         } finally {
           if (this.successful + this.failed == nbRequests) {

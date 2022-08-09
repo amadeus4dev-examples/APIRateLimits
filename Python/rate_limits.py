@@ -25,7 +25,7 @@ search_params = {
   'adults': 1,
   'travelClass': 'ECONOMY'
 }
-now = time.time()
+start = time.time()
 
 # Using ratelimit package we can decorate a function with @sleep_and_retry
 # so the thread executing the function will sleep after the number of calls
@@ -33,9 +33,9 @@ now = time.time()
 # in the @limits decorator
 @sleep_and_retry
 @limits(calls=1, period=0.1)
-def flights_offers_search(call_nb, **args):
-  elapsed = time.time() - now
-  print(f'Call nb {call_nb} -- Elapsed time: {elapsed}', flush=True)
+def flights_offers_search(**args):
+  elapsed = time.time() - start
+  print(f'Request sent after {elapsed:.3f}s', flush=True)
   return amadeus.shopping.flight_offers_search.get(**args)
 
 
@@ -43,8 +43,12 @@ print('Sending requests...')
 results = []
 #All requests are executed simultaneously thanks to max_workers=request_nb
 with concurrent.futures.ThreadPoolExecutor(max_workers=nb_requests) as executor:
+
+  futures = []
+
   #Create nb_requests futures
-  futures = {executor.submit(flights_offers_search, i, **search_params): i for i in range(nb_requests)}
+  for i in range(nb_requests):
+    futures.append(executor.submit(flights_offers_search, **search_params))
 
   #Iterate the completed futures. Futures are yield when completed
   for future in concurrent.futures.as_completed(futures):
