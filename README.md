@@ -7,6 +7,8 @@ The rate limits must be applied on the server side and managed by the client dep
 
 ## How to implement on client side
 
+There is two principal limits that must be managed. The first one is the total requests for APIs that charge per request, this helps avoid unexpected high billings. You can define a limiter that drops all requests for a certain API after a threshold of 10.000 per month. You can even configure the limiter to put the requests on hold until the next billing period. The second use case is concerning the technical rate limits imposed by the APIs themselves. For example, for the Self-Service APIs, you must not exceed 1 request per 100ms. Although this can also be managed in the client side, and we can indeed send no more than 1 request each 100ms, due to network latencies it's impossible to guarantee the requests are going to reach the server respecting the rate limits. However, there is some mechanisms that can be implemented in order to get less rate limit error for high request rate needs.
+
 To illustrate a clear use case of managing API rate limits in the client side, lets use a prototype application from Amadeus for Developers. The applications is a flight search tool with a calendar feature which shows prices for dates nearby the selected ones. This app is accessible [here](https://github.com/gustavo-bertoldi/FlightSearchCalendar)
 
 ![Calendar](imgs/Calendar.png)
