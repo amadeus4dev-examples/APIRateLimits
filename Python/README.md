@@ -36,15 +36,19 @@ def flights_offers_search(**kwargs):
 results = []
 #All requests are executed simultaneously thanks to max_workers=request_nb
 with concurrent.futures.ThreadPoolExecutor(max_workers=nb_requests) as executor:
+
+  futures = []
+
   #Create nb_requests futures
-  futures = {executor.submit(flights_offers_search, i, **search_params): i for i in range(nb_requests)}
+  for i in range(nb_requests):
+    futures.append(executor.submit(flights_offers_search, **search_params))
 
   #Iterate the completed futures. Futures are yield when completed
   for future in concurrent.futures.as_completed(futures):
     try:
       results.append(future.result())
       successful += 1
-    except ResponseError as error:
+    except (ResponseError, RateLimitException) as error:
       failed += 1
     finally:
       if successful + failed == nb_requests:
