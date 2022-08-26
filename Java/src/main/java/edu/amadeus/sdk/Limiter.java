@@ -3,7 +3,6 @@ package edu.amadeus.sdk;
 import java.io.Closeable;
 import java.time.Duration;
 import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 import io.github.resilience4j.bulkhead.ThreadPoolBulkhead;
