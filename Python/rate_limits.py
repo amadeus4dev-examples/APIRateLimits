@@ -1,4 +1,4 @@
-from asyncio import Future
+from asyncio import ALL_COMPLETED, Future
 import time
 from amadeus import Client, ResponseError
 from dotenv import load_dotenv
@@ -42,28 +42,18 @@ def flights_offers_search(**kwargs):
 
 print('Sending requests...')
 results = []
-#All requests are executed simultaneously thanks to max_workers=request_nb
-with concurrent.futures.ThreadPoolExecutor(max_workers=nb_requests) as executor:
 
-  futures = []
+for i in range(0,15):
+  results.append(flights_offers_search(**search_params))
 
-  #Create nb_requests futures
-  for i in range(nb_requests):
-    futures.append(executor.submit(flights_offers_search, **search_params))
 
-  #Iterate the completed futures. Futures are yield when completed
-  for future in concurrent.futures.as_completed(futures):
-    try:
-      results.append(future.result())
-      successful += 1
-    except (ResponseError, RateLimitException) as error:
-      failed += 1
-    finally:
-      if successful + failed == nb_requests:
-        print(f'Requests completed with {successful} successes and {failed} fails')
+concurrent.futures.wait(results, timeout=None, return_when=ALL_COMPLETED)
+
+for res in results:
+  print(res.Response)
 
 
 # Print all successes
 
-for result in results:
-  print(results[0].data[0]['price']['grandTotal'])
+# for result in results:
+#   print(results[0].data[0]['price']['grandTotal'])

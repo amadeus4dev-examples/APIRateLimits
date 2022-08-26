@@ -6,15 +6,18 @@ import com.amadeus.exceptions.ResponseException;
 import com.amadeus.resources.FlightOfferSearch;
 import com.google.common.util.concurrent.RateLimiter;
 
+import io.github.cdimascio.dotenv.Dotenv;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 enum AmadeusEnvironment {
   TEST,
@@ -87,34 +90,51 @@ public class RateLimits {
   }
 
   public static void main(String[] args) {
+    
+    Dotenv dotenv = Dotenv.load();
 
     // Config Amadeus object
-    Amadeus amadeus = Amadeus.builder(System.getenv()).build();
+    Amadeus amadeus = Amadeus.builder(
+        dotenv.get("AMADEUS_CLIENT_ID"),
+        dotenv.get("AMADEUS_CLIENT_SECRET")
+      ).build();
 
-    //Get dates
-    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    String departureDate = LocalDate.now().format(formatter);
-    String returnDate = LocalDate.now().plusWeeks(2).format(formatter);
 
-    // Configure parameters for the query
-    Params params = Params.with("originLocationCode", "MAD")
+
+    // RateLimits limiter = new RateLimits();
+    // List<FlightOfferSearch[]> result = limiter.runQueries(50, flightOffersSearch);
+    // result.stream()
+    //   .forEach(offer -> {
+    //     if (offer != null)System.out.println(offer[0].getPrice().getTotal());
+    //   });
+
+    Callable<FlightOfferSearch[]> flightOffersSearch = new Callable<FlightOfferSearch[]>() {
+      DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+      String departureDate = LocalDate.now().format(formatter);
+      String returnDate = LocalDate.now().plusWeeks(2).format(formatter);
+
+      Params params = Params.with("originLocationCode", "MAD")
       .and("destinationLocationCode", "LHR")
       .and("departureDate", departureDate)
       .and("returnDate", returnDate)
       .and("adults", 2)
       .and("max", 3);
 
-    Callable<FlightOfferSearch[]> flightOffersSearch = new Callable<FlightOfferSearch[]>() {
       public FlightOfferSearch[] call() throws ResponseException {
         return amadeus.shopping.flightOffersSearch.get(params);
       }
     };
 
-    RateLimits limiter = new RateLimits();
-    List<FlightOfferSearch[]> result = limiter.runQueries(50, flightOffersSearch);
-    result.stream()
-      .forEach(offer -> {
-        if (offer != null)System.out.println(offer[0].getPrice().getTotal());
-      });
+    try ( Limiter limiter = Limiter.forEnvironment(Limiter.AmadeusEnvironment.TEST) ) {
+      limiter.setDebug(true);
+      Callable<CompletionStage<FlightOfferSearch[]>> _flightOffersSearch = limiter.decorate(flightOffersSearch);
+      for (int i = 0; i < 15; i++) {
+        _flightOffersSearch.call().whenCompleteAsync((res, exception) -> System.out.println(res[0].getPrice().getTotal()));
+      }
+    } catch (Exception e) {
+      System.err.println(e.getMessage());
+    }
+    
+
   }
 }

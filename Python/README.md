@@ -15,6 +15,12 @@ To implement the rate limits management in a Python environment we are going to 
 Lets take a look at some examples using the [Amadeus Python SDK](https://github.com/amadeus4dev/amadeus-python)
 
 ```python
+amadeus = Client()
+
+departure_date = datetime.datetime.now()
+return_date = (departure_date + datetime.timedelta(days=10)).strftime('%Y-%m-%d')
+departure_date = departure_date.strftime('%Y-%m-%d')
+
 nb_requests = 50
 search_params = {
   'originLocationCode': 'MAD',
