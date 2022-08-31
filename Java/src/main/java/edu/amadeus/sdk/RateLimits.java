@@ -2,137 +2,74 @@ package edu.amadeus.sdk;
 
 import com.amadeus.Amadeus;
 import com.amadeus.Params;
-import com.amadeus.exceptions.ResponseException;
 import com.amadeus.resources.FlightOfferSearch;
-import com.google.common.util.concurrent.RateLimiter;
 
 import io.github.cdimascio.dotenv.Dotenv;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-
-enum AmadeusEnvironment {
-  TEST,
-  PRODUCTION
-}
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 
 public class RateLimits {
-  private int successful = 0;
-  private int failed = 0;
-  private RateLimiter limiter;
-
-  RateLimits() {
-    this.successful = 0;
-    this.failed = 0;
-    limiter = RateLimiter.create(10);
-  }
-
-  RateLimits(AmadeusEnvironment apiEnvironment) {
-    this.successful = 0;
-    this.failed = 0;
-
-    //Test -- 10 tx per second, 1 tx per 100ms
-    if (apiEnvironment == AmadeusEnvironment.TEST) {
-      limiter = RateLimiter.create(10);
-    } 
-    // Production -- 40tx per second
-    else {
-      limiter = RateLimiter.create(40);
-    }
-  }
-
-  public <V> List<V> runQueries(int nbRequests, Callable<V> query) { 
-    this.successful = 0;
-    this.failed = 0;
+  private static final Dotenv ENV = Dotenv.load();
+  private static final Amadeus CLIENT = Amadeus.builder(
+      ENV.get("AMADEUS_CLIENT_ID"),
+      ENV.get("AMADEUS_CLIENT_SECRET")
+    ).build();
   
-    ExecutorService executor = Executors.newFixedThreadPool(nbRequests);
-    long start = System.currentTimeMillis();
-
-    List<V> results = new ArrayList<>(nbRequests);
-
-    for (int i = 0; i < nbRequests; i++) {
-      limiter.acquire(1);
-      long elapsed = System.currentTimeMillis() - start;
-      System.out.println("Request " + (i + 1) + " sent after " + elapsed + "ms");
-      System.out.flush();
-      executor.submit(() -> {
-        try {
-          V response = query.call();
-          results.add(response);
-          this.successful += 1;
-        } catch (Exception e) {
-          //System.err.println(e.getMessage());
-          this.failed += 1;
-        } finally {
-          if (this.successful + this.failed == nbRequests) {
-            System.out.println("Requests completed with " + this.successful + " successes and " + this.failed + " fails");
-            System.out.flush();
-          }
-        } 
-      });
-    }
-    
-    try {
-      executor.shutdown();
-      executor.awaitTermination(30, TimeUnit.SECONDS);
-    } catch (Exception e) {
-
-    }
-    return results;
-  }
-
   public static void main(String[] args) {
-    
-    Dotenv dotenv = Dotenv.load();
-
-    // Config Amadeus object
-    Amadeus amadeus = Amadeus.builder(
-        dotenv.get("AMADEUS_CLIENT_ID"),
-        dotenv.get("AMADEUS_CLIENT_SECRET")
-      ).build();
-
-
-
-    // RateLimits limiter = new RateLimits();
-    // List<FlightOfferSearch[]> result = limiter.runQueries(50, flightOffersSearch);
-    // result.stream()
-    //   .forEach(offer -> {
-    //     if (offer != null)System.out.println(offer[0].getPrice().getTotal());
-    //   });
-
-    Callable<FlightOfferSearch[]> flightOffersSearch = new Callable<FlightOfferSearch[]>() {
-      DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-      String departureDate = LocalDate.now().format(formatter);
-      String returnDate = LocalDate.now().plusWeeks(2).format(formatter);
-
-      Params params = Params.with("originLocationCode", "MAD")
+  
+    final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    final String departureDate = LocalDate.now().format(formatter);
+    final String returnDate = LocalDate.now().plusWeeks(2).format(formatter);
+    final Params params = Params.with("originLocationCode", "MAD")
       .and("destinationLocationCode", "LHR")
       .and("departureDate", departureDate)
       .and("returnDate", returnDate)
       .and("adults", 2)
       .and("max", 3);
 
-      public FlightOfferSearch[] call() throws ResponseException {
-        return amadeus.shopping.flightOffersSearch.get(params);
+
+    //Wrapper for checked exception
+    Function<Params, FlightOfferSearch[]> exHandled = p -> {
+      try {
+        return CLIENT.shopping.flightOffersSearch.get(p);
+      } catch (Exception e) {
+        throw new RuntimeException(e);
       }
     };
+    
+    LimitedFunction<Params, FlightOfferSearch[]> flightOffersSearch = new LimitedFunction<>(exHandled);
+    flightOffersSearch.setGlobalLimits(Duration.ofMinutes(10), 20).setDebugger();
 
-    try ( Limiter limiter = Limiter.forEnvironment(Limiter.AmadeusEnvironment.TEST) ) {
-      limiter.setDebug(true);
-      Callable<CompletionStage<FlightOfferSearch[]>> _flightOffersSearch = limiter.decorate(flightOffersSearch);
-      for (int i = 0; i < 15; i++) {
-        _flightOffersSearch.call().whenCompleteAsync((res, exception) -> System.out.println(res[0].getPrice().getTotal()));
+    List<CompletableFuture<FlightOfferSearch[]>> responses = new ArrayList<>();
+    for (int i = 0; i < 20; i++) {
+      try {
+        responses.add(flightOffersSearch.get(params));
+      } catch (Exception e) {
+        System.err.println(e.getMessage());
       }
-    } catch (Exception e) {
-      System.err.println(e.getMessage());
     }
+
+    //Get responses
+    responses.forEach(CompletableFuture::join); //Wait for all futures
+    int i = 1;
+    for (CompletableFuture<FlightOfferSearch[]> f : responses) {
+      String d = "Response " + i++ + ": ";
+      try {
+        FlightOfferSearch[] res = f.get();
+        d += res[0].getPrice().getTotal();
+      } catch (Exception e) {
+        d += "failed";
+      }
+      System.out.println(d);
+    }
+
+    flightOffersSearch.close();
     
 
   }
