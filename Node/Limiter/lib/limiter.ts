@@ -1,4 +1,5 @@
 import Bottleneck from 'bottleneck';
+import { Duration } from './duration';
 
 const TEST_REFRESH: Duration = Duration.FromMilliseconds(400);
 const PROD_REFRESH: Duration = Duration.FromMilliseconds(4000);
@@ -7,15 +8,17 @@ const PROD_LIMIT_FOR_PERIOD: number = 40;
 const TEST_MAX_CONCURRENT: number = 10;
 const PROD_MAX_CONCURRENT: number = 40;
 const DEFAULT_MAX_QUEUE: number = 100;
+const GLOBAL_NOT_SET: Error = new Error('Global limits were not set but attempt to be used');
+
 
 type AmadeusFunction = (p: any) => Promise<any>;
 
-class Limiter {
+export class Limiter {
   #limiter: Bottleneck;
   #globalLimit: number;
-  #globalRefresh: Duration;
-  #remainingPermissions: number;
-  #globalLimiterLastRefresh: Date;
+  #globalRefresh: Duration | undefined;
+  #remainingPermissions: number | undefined;
+  #globalLimiterLastRefresh: number | undefined;
 
   private constructor(refresh: Duration, limit: number, maxConcurrent: number, maxQueue: number) {
     this.#limiter = new Bottleneck({
@@ -58,27 +61,37 @@ class Limiter {
   private getPermission(): boolean {
     let allowed = false;
     if (this.#globalLimit > 0) {
-      if (Date.now() - this.#globalLimiterLastRefresh.getTime() >= this.#globalRefresh.ms) {
+
+      if (this.#globalLimiterLastRefresh === undefined || this.#globalRefresh === undefined
+        || this.#remainingPermissions === undefined) throw GLOBAL_NOT_SET;
+      
+
+      if (Date.now() - this.#globalLimiterLastRefresh >= this.#globalRefresh.ms) {
+        console.log('Refreshing global limiter')
         this.#remainingPermissions = this.#globalLimit;
+        this.#globalLimiterLastRefresh = Date.now();
       }
 
       if (this.#remainingPermissions > 0) {
         allowed = true;
         this.#remainingPermissions--;
+        console.log(`Permission acquired. Remaining: ${this.#remainingPermissions}. Time to refresh: ${this.#globalRefresh.ms - (Date.now() - this.#globalLimiterLastRefresh)}`)
       }
-    }
+    } else allowed = true;
     return allowed;
   }
 
   setGlobalLimits(globalRefresh: Duration, globalLimit: number): Limiter {
     this.#globalRefresh = globalRefresh;
     this.#globalLimit = globalLimit;
+    this.#globalLimiterLastRefresh = Date.now();
+    this.#remainingPermissions = globalLimit;
     return this;
   }
 
   wrap(fn: AmadeusFunction): Function {
     return (params: any) => {
-      if (this.getPermission()) this.#limiter.schedule(() => fn(params));
+      if (this.getPermission()) return this.#limiter.schedule(() => fn(params));
       else throw new Error("Maximum global requests reached");
     }
   }

@@ -1,5 +1,4 @@
-
-class Duration {
+export class Duration {
   #ms: number;
 
   constructor(ms: number) {

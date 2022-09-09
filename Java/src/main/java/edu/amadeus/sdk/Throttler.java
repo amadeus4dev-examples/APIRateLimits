@@ -13,7 +13,7 @@ public class Throttler {
 
   private static RateLimiterConfig getRateLimitConfig(Duration refreshPeriod, int limit) {
     return RateLimiterConfig.custom()
-      .timeoutDuration(Duration.ofSeconds(60))
+      .timeoutDuration(Duration.ofMinutes(3))
       .limitRefreshPeriod(refreshPeriod)
       .limitForPeriod(limit)
       .build();

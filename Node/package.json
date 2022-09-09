@@ -1,28 +1,9 @@
 {
-  "name": "amadeus-rate-limiter",
-  "version": "1.0.0",
-  "description": "Rate limiter for using Amadeus APIs. Allows to limit the requests to Amadeus endpoints avoiding unexpected costs and rate limit errors.",
-  "main": "index.ts",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "lint": "gts lint",
-    "clean": "gts clean",
-    "compile": "tsc",
-    "fix": "gts fix",
-    "prepare": "npm.cmd run compile",
-    "pretest": "npm.cmd run compile",
-    "posttest": "npm.cmd run lint"
-  },
-  "author": "Gustavo BERTOLDI",
-  "license": "MIT",
-  "devDependencies": {
-    "@types/node": "^14.11.2",
-    "gts": "^3.1.0",
-    "typescript": "^4.8.2"
-  },
   "dependencies": {
     "amadeus": "^7.0.0",
-    "bottleneck": "^2.19.5",
     "dotenv": "^16.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^18.7.16"
   }
 }
